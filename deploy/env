@@ -1,0 +1,9 @@
+# Non-secret runtime configuration applied to the Komodo deployment on every deploy.
+# Secrets are NOT stored here: the app bootstraps them from Serble into /data (see ops/RUNBOOK.md).
+PORT=8080
+DATA_DIR=/data
+PUBLIC_URL=https://hexstake.app
+APP_VERSION=__IMAGE_TAG__
+TURN_SECONDS=15
+RAKE_PERCENT=5
+LOG_LEVEL=info
