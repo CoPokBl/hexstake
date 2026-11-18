@@ -1,0 +1,25 @@
+{
+  "name": "hexstake",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Simultaneous-turn hex strategy duels with Serble coin stakes",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node dist/server.js",
+    "dev": "npm run build && node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/build.mjs --tests && node --test dist-test/*.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/ws": "^8.18.2",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.9.3"
+  }
+}
