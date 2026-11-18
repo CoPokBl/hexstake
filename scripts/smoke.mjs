@@ -10,7 +10,7 @@ page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 let ok = false;
 try {
-  await page.goto(base, { waitUntil: "networkidle" });
+  await page.goto(base, { waitUntil: "load", timeout: 45000 });
   await page.click("text=Play now");
   await page.waitForSelector("canvas.board", { timeout: 15000 });
   await page.waitForSelector("text=Turn 1", { timeout: 10000 });
