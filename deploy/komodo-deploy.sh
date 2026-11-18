@@ -13,6 +13,11 @@ komodo() { # komodo <read|write|execute> <json>
     --data "$2")
   code=${out##*$'\n'}
   out=${out%$'\n'*}
+  if [[ "$code" == 401 || "$code" == 403 ]]; then
+    # Never retry on auth failures: Komodo locks the user out after a few bad attempts.
+    echo "::error::Komodo rejected the API credentials ($code): $out" >&2
+    exit 2
+  fi
   if [[ "$code" != 2* ]]; then
     echo "Komodo $1 failed ($code): $out" >&2
     return 1
