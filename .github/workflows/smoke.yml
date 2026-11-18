@@ -1,0 +1,27 @@
+name: Production smoke test
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build & Deploy"]
+    types: [completed]
+  schedule:
+    - cron: "17 */6 * * *"
+permissions:
+  contents: read
+jobs:
+  smoke:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm i --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
+      - run: node scripts/smoke.mjs https://hexstake.app
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-failure
+          path: smoke-failure.png
+          if-no-files-found: ignore
