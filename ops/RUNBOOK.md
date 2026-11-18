@@ -29,6 +29,19 @@ Every push to `main` runs `.github/workflows/deploy.yml`:
    from `deploy/env`, then `Deploy`.
 5. `deploy/wait-live.sh` polls `https://hexstake.app/healthz` until `version` equals the new tag.
 
+After each successful deploy, `.github/workflows/smoke.yml` loads the live site in a real browser
+on GitHub's runners, starts a bot match and plays a turn. It also runs every 6 hours and can be
+dispatched by hand. `.github/workflows/diagnose.yml`, also run by hand, prints the container's
+state and logs through Komodo.
+
+The Komodo API user needs **Write** on the deployment for `UpdateDeployment`, Execute for
+`Deploy`, and the **Logs** permission for the diagnostics to show logs. The scripts stop at the
+first 401 or 403, because Komodo locks the user out after about 5 bad attempts.
+
+Browser WebSockets to hexstake.app fail from inside Claude sandboxes with a 404: the sandbox's
+explicit proxy doesn't forward upgrades. That says nothing about production, so use the smoke
+workflow or Node's `ws` client to check real behaviour.
+
 **Changing config:** edit `deploy/env` (non-secret values only) and push.
 
 **Redeploying by hand:** run `gh workflow run deploy.yml -R CoPokBl/hexstake`, then watch it with
