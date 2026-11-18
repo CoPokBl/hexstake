@@ -1,0 +1,29 @@
+name: Diagnose production
+on:
+  workflow_dispatch:
+    inputs:
+      tail:
+        description: "Log lines to show"
+        default: "150"
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_OAUTH_AUDIENCE }}
+          tags: tag:komodo-deployer
+      - name: Public health
+        run: curl -sS --max-time 10 -w '\nhttp=%{http_code}\n' https://hexstake.app/healthz || true
+      - name: Container status and logs
+        env:
+          KOMODO_URL: ${{ secrets.KOMODO_URL }}
+          KOMODO_API_KEY: ${{ secrets.KOMODO_API_KEY }}
+          KOMODO_API_SECRET: ${{ secrets.KOMODO_API_SECRET }}
+          KOMODO_DEPLOYMENT: ${{ secrets.KOMODO_DEPLOYMENT }}
+        run: bash deploy/komodo-status.sh "${{ inputs.tail }}"

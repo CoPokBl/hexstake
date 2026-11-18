@@ -80,3 +80,11 @@ jobs:
         run: bash deploy/komodo-deploy.sh
       - name: Wait for the new version to go live
         run: bash deploy/wait-live.sh "${{ needs.image.outputs.tag }}"
+      - name: Container status and logs
+        if: always()
+        env:
+          KOMODO_URL: ${{ secrets.KOMODO_URL }}
+          KOMODO_API_KEY: ${{ secrets.KOMODO_API_KEY }}
+          KOMODO_API_SECRET: ${{ secrets.KOMODO_API_SECRET }}
+          KOMODO_DEPLOYMENT: ${{ secrets.KOMODO_DEPLOYMENT }}
+        run: bash deploy/komodo-status.sh 60
