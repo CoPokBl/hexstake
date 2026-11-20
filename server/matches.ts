@@ -34,6 +34,8 @@ export interface MatchHooks {
 
 export class LiveMatch {
   pending: [Orders | null, Orders | null] = [null, null];
+  /** Orders a player has placed but not locked in; used if the turn times out. */
+  drafts: [Orders | null, Orders | null] = [null, null];
   deadline = 0;
   missed: [number, number] = [0, 0];
   lastResult: TurnResult | null = null;
@@ -100,6 +102,7 @@ export class LiveMatch {
   private scheduleTurn(extraMs = 0) {
     this.clearTimers();
     this.pending = [null, null];
+    this.drafts = [null, null];
     this.deadline = now() + config.turnSeconds * 1000 + extraMs;
     this.timer = setTimeout(() => this.resolve(), this.deadline - now());
     this.seats.forEach((seat, p) => {
@@ -139,13 +142,29 @@ export class LiveMatch {
     return null;
   }
 
+  /** Remember in-progress orders so they still count if the timer runs out. */
+  setDraft(p: Player, orders: Orders): string | null {
+    if (this.state.over || this.pending[p] !== null) return null;
+    const err = validateOrders(this.state, p, orders);
+    if (err) return err;
+    this.drafts[p] = normalizeOrders(orders);
+    return null;
+  }
+
   private resolve() {
     if (this.state.over) return;
     this.clearTimers();
     for (const p of [0, 1] as Player[]) {
       if (this.pending[p] === null) {
-        this.pending[p] = {};
-        if (!this.seats[p].bot) this.missed[p]++;
+        const draft = this.drafts[p];
+        if (draft && Object.keys(draft).length > 0) {
+          // Timed out with orders placed: lock them in rather than discarding them.
+          this.pending[p] = draft;
+          this.missed[p] = 0;
+        } else {
+          this.pending[p] = {};
+          if (!this.seats[p].bot) this.missed[p]++;
+        }
       }
     }
     const [a, b] = [this.pending[0]!, this.pending[1]!];

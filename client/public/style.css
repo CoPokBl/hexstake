@@ -230,3 +230,8 @@ body.offline .offline-banner { display: block; }
   .players { flex-direction: column; }
   .vs { display: none; }
 }
+
+.income { margin: 0; color: var(--text-dim); }
+.guide { background: var(--surface-2); border-radius: 10px; padding: .75rem .9rem; font-size: .9rem; border-left: 4px solid var(--highlight); }
+.guide ol { margin: .4rem 0 .6rem; padding-left: 1.2rem; }
+.guide li { margin-bottom: .3rem; }

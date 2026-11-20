@@ -167,12 +167,20 @@ export class BoardRenderer {
         ctx.beginPath();
         ctx.arc(x, y, inner * 0.62, 0, Math.PI * 2);
         ctx.stroke();
+        // income label so it's obvious what wells are for
+        ctx.fillStyle = p.well;
+        ctx.font = font(this.size * 0.26, 800);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("+2", x, y + inner * 0.47);
       }
       if (cell.kind === "home") {
-        ctx.strokeStyle = cell.owner === mine || (cell.owner === null && s.homes[mine] === idx) ? p.mine : p.theirs;
+        const homeColor = cell.owner === mine || (cell.owner === null && s.homes[mine] === idx) ? p.mine : p.theirs;
+        ctx.strokeStyle = homeColor;
         ctx.lineWidth = Math.max(2, this.size * 0.12);
         this.hexPath(x, y, inner * 0.72);
         ctx.stroke();
+        this.house(x, y - inner * 0.36, this.size * 0.3, homeColor);
       }
 
       if (reach && reach.has(idx)) {
@@ -197,7 +205,8 @@ export class BoardRenderer {
         ctx.font = font(this.size * 0.62, 700);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(String(cell.strength), x, y + this.size * 0.02);
+        const dy = cell.kind === "home" ? this.size * 0.2 : this.size * 0.02;
+        ctx.fillText(String(cell.strength), x, y + dy);
       }
 
       // pending orders badge
@@ -224,6 +233,19 @@ export class BoardRenderer {
         }
       }
     });
+  }
+
+  /** Small house glyph marking a home hex. */
+  private house(cx: number, cy: number, w: number, color: string) {
+    const ctx = this.ctx;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.75, cy);
+    ctx.lineTo(cx, cy - w * 0.7);
+    ctx.lineTo(cx + w * 0.75, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(cx - w * 0.5, cy, w, w * 0.6);
   }
 
   private badge(x: number, y: number, text: string, color: string) {

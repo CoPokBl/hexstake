@@ -651,7 +651,18 @@ function allocate(idx: number, delta: number) {
   if (next === 0) delete orders[idx];
   else orders[idx] = next;
   navigator.vibrate?.(8);
+  queueDraft();
   renderMatchHud();
+}
+
+let draftTimer: number | null = null;
+/** Send placed-but-unlocked orders so the server can use them if the timer runs out. */
+function queueDraft() {
+  if (draftTimer) clearTimeout(draftTimer);
+  draftTimer = window.setTimeout(() => {
+    draftTimer = null;
+    if (match && myTurnOpen()) send({ t: "draft", matchId: match.id, orders, turn: match.state.turn });
+  }, 250);
 }
 
 function setBrush(n: number) {
@@ -710,7 +721,7 @@ function renderMatchHud() {
         match!.submitted[p] && !s.over ? h("span", { class: "ready" }, "✓ ready") : null),
       h("div", { class: "nums" },
         h("span", { title: "Energy banked" }, icon("bolt"), String(s.energy[p])),
-        h("span", { title: "Income next turn" }, "+", String(incomeFor(s, p))),
+        h("span", { title: "Energy gained next turn" }, `+${incomeFor(s, p)}/turn`),
         h("span", { title: "Hexes held" }, icon("hex"), String(sc[p].hexes)),
       ));
   };
@@ -740,17 +751,21 @@ function renderMatchHud() {
   if (match.submitted[me_]) {
     controls.append(h("p", { class: "locked" }, "Orders locked in. Waiting for your opponent…"));
   } else {
+    const guide = firstMatchGuide();
+    const guideEls = guide ? [guide] : [];
     controls.append(
       h("div", { class: "energy" }, h("b", {}, String(left)), h("span", {}, ` of ${s.energy[me_]} energy left`)),
       h("div", { class: "brushes" },
         ...[1, 2, 3, 5].map((n) => h("button", { class: `btn small ${brush === n && !eraser ? "on" : ""}`, onclick: () => { eraser = false; setBrush(n); } }, `+${n}`)),
         h("button", { class: `btn small ${eraser ? "on" : ""}`, onclick: toggleEraser, title: "Remove energy (or right-click)" }, "−"),
       ),
-      h("p", { class: "muted small" }, "Tap highlighted hexes to place energy: on your own hexes to fortify, on neighbours to claim or attack."),
+      incomeLine(s, me_),
+      h("p", { class: "muted small" }, "Tap highlighted hexes to place energy: on your own hexes to fortify, on neighbours to claim or attack. Placed energy locks in automatically when time runs out."),
       h("div", { class: "row" },
         h("button", { class: "btn primary big grow", onclick: lockIn }, spent ? `Lock in (${spent})` : "Pass turn"),
-        h("button", { class: "btn", onclick: () => { orders = {}; renderMatchHud(); } }, "Clear"),
+        h("button", { class: "btn", onclick: () => { orders = {}; queueDraft(); renderMatchHud(); } }, "Clear"),
       ),
+      ...guideEls,
     );
   }
   controls.append(h("button", {
@@ -758,6 +773,49 @@ function renderMatchHud() {
       if (confirm(match!.stake ? "Resign and forfeit your stake?" : "Resign this match?")) send({ t: "resign", matchId: match!.id });
     },
   }, "Resign"));
+}
+
+/** Spell out where energy comes from: only the home and connected wells produce it. */
+function incomeLine(s: GameState, p: Player) {
+  const wells = (incomeFor(s, p) - s.config.incomeBase) / s.config.wellIncome;
+  return h("p", { class: "income small" },
+    `Next turn: +${s.config.incomeBase} from your home`,
+    wells > 0 ? ` +${wells * s.config.wellIncome} from ${wells} well${wells === 1 ? "" : "s"}` : "",
+    `. Grab wells (+${s.config.wellIncome} each); other hexes give no energy.`);
+}
+
+const GUIDE_KEY = "hx_guide_seen";
+function guideCount(): number {
+  try {
+    return Number(localStorage.getItem(GUIDE_KEY) ?? "0");
+  } catch {
+    return 99;
+  }
+}
+
+/** A short how-to that shows during a player's first couple of matches. */
+function firstMatchGuide() {
+  if (!match || match.state.turn > 6 || guideCount() >= 2) return null;
+  const box = h("div", { class: "guide" },
+    h("b", {}, "How to play"),
+    h("ol", {},
+      h("li", {}, "Your ", h("b", {}, "home"), " is the hex with the house. If it's captured you lose, so watch your opponent's energy bank."),
+      h("li", {}, "Tap the dashed hexes to spend energy: claim neutral hexes, attack enemy ones, or fortify your own."),
+      h("li", {}, "Ringed ", h("b", {}, "wells"), " give +2 energy every turn while they're connected to your home. Nothing else adds income."),
+      h("li", {}, "Both players move at the same time. Hit ", h("b", {}, "Lock in"), " when you're done."),
+    ),
+    h("button", {
+      class: "btn small", onclick: () => {
+        try {
+          localStorage.setItem(GUIDE_KEY, "2");
+        } catch {
+          /* ignore */
+        }
+        box.remove();
+      },
+    }, "Got it"),
+  );
+  return box;
 }
 
 function endPanel() {
@@ -785,6 +843,11 @@ function endPanel() {
 
 function onMatchEnd() {
   if (!match) return;
+  try {
+    localStorage.setItem(GUIDE_KEY, String(guideCount() + 1));
+  } catch {
+    /* ignore */
+  }
   const won = match.you !== null && match.state.winner === match.you;
   if (won) navigator.vibrate?.([30, 50, 30]);
   void refreshMe();

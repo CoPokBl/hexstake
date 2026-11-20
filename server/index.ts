@@ -284,7 +284,8 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL, session:
   }
   if ((m = path.match(/^\/api\/matches\/([\w-]+)$/))) {
     const live = mm.get(m[1]);
-    if (live) return send(res, 200, { live: !live.state.over, ...live.view(session?.userId ?? null) });
+    // Finished matches stay in memory for a while; serve the stored record (replay) for those.
+    if (live && !live.state.over) return send(res, 200, { live: true, ...live.view(session?.userId ?? null) });
     const row = db.prepare("SELECT id, mode, p0, p1, p0_name, p1_name, seed, stake, status, winner, end_reason, turns, elo_change, history, created_at, ended_at FROM matches WHERE id = ?").get(m[1]) as Record<string, any> | undefined;
     if (!row) return send(res, 404, { error: "no such match" });
     return send(res, 200, { live: false, record: { ...row, p0: anon(row.p0), p1: anon(row.p1), history: row.history ? JSON.parse(row.history) : [] } });
@@ -518,6 +519,14 @@ function onSocket(ws: WebSocket, session: Session) {
         if (msg.turn !== undefined && msg.turn !== m.state.turn) return err("that turn already ended");
         const e = m.submit(p, msg.orders ?? {});
         if (e) return err(e);
+        return;
+      }
+      case "draft": {
+        const m = mm.get(String(msg.matchId));
+        const p = m?.seatOf(client.userId);
+        if (!m || p === null || p === undefined) return;
+        if (msg.turn !== undefined && msg.turn !== m.state.turn) return;
+        m.setDraft(p, msg.orders ?? {});
         return;
       }
       case "resign": {

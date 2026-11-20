@@ -46,8 +46,10 @@ export function adminAnalytics(d: DB, days = 7) {
                 SUM(type = 'match_end') matches FROM events WHERE ts > ? GROUP BY day ORDER BY day`, since),
     matchesByMode: all(`SELECT mode, COUNT(*) n, AVG(turns) avg_turns, SUM(end_reason = 'abandon') abandoned,
                         SUM(end_reason = 'forfeit') forfeits FROM matches WHERE created_at > ? GROUP BY mode`, since),
-    botResults: all(`SELECT p1 bot, COUNT(*) n, SUM(winner = 0) human_wins FROM matches
-                     WHERE mode = 'bot' AND status = 'finished' AND created_at > ? GROUP BY p1`, since),
+    // Seats are randomized, so the bot can be p0 or p1.
+    botResults: all(`SELECT CASE WHEN p0 LIKE 'bot:%' THEN p0 ELSE p1 END bot, COUNT(*) n,
+                     SUM(winner = CASE WHEN p0 LIKE 'bot:%' THEN 1 ELSE 0 END) human_wins, SUM(winner IS NULL) draws
+                     FROM matches WHERE mode = 'bot' AND status = 'finished' AND created_at > ? GROUP BY bot`, since),
     payments: all("SELECT kind, status, COUNT(*) n, SUM(amount) amount FROM payments WHERE created_at > ? GROUP BY kind, status", since),
     errors: all("SELECT ts, data FROM events WHERE type = 'error' AND ts > ? ORDER BY ts DESC LIMIT 50", since),
     feedback: all("SELECT ts, user_id, data FROM events WHERE type = 'feedback' AND ts > ? ORDER BY ts DESC LIMIT 100", since),
