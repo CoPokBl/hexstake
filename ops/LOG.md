@@ -1,5 +1,21 @@
 # Maintenance log
 
+## 2026-11-20 (evening run): interactive tutorial, stronger bots
+- Health OK, all deploys and smoke tests green, no open issues or PRs, no errors, no stuck
+  payments. 18 matches in 24h; ranked is picking up (7 matches). One staked match paid out.
+- Feedback: "make an interactive tutorial instead of a slab of text". Replaced the text guide
+  with a 7-step tutorial match against a passive easy bot with 90-second turns. Each step points
+  at a hex with a pulsing ring and advances when the player does it. "Play now" starts it for
+  first-time visitors, and it's also on the Practice card and the Rules page.
+- Bots: humans beat *hard* 3 of 4 but *normal* 0 of 6. Replays showed hard (a) let its home
+  fall, by assuming only 60% of the attacker's bank would hit it, and (b) undervalued wells and
+  lost the economy (4 vs 14 income). Hard now defends against the full bank, normal against 80%,
+  and the well value went up after a sweep. Against a scripted all-in well-rusher, hard went from
+  53% to 70% and normal from 37% to 49%. The rusher is now a regression test
+  (`test/strategies.ts`).
+- Fixed: home markers vanished once a home's fill became opaque (strength 8 and up), because
+  they were drawn in the owner's colour. Owned homes now use white.
+
 ## 2026-11-20: scheduling fix, feedback fixes, clearer onboarding
 - **Why nothing shipped on 11-19:** the daily scheduled session ran and fixed things, but fresh
   scheduled sessions had no GitHub access (403 on push and API, no add_repo). Replaced it with a

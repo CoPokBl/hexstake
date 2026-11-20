@@ -17,10 +17,13 @@ interface Profile {
   reserve: number; // share of energy held back
 }
 
+// Wells pay +2 every turn for the rest of the game, so they are worth far more than plain hexes.
+const WELL_VALUE = 10; // tuned by simulation, see test/game.test.ts
+
 export const PROFILES: Record<BotLevel, Profile> = {
   easy: { noise: 1.6, caution: 0, homeDefense: 0.3, homeAttack: 0, reserve: 0.3 },
-  normal: { noise: 0.7, caution: 0, homeDefense: 0.5, homeAttack: 0.2, reserve: 0 },
-  hard: { noise: 0.2, caution: 0, homeDefense: 0.6, homeAttack: 0.3, reserve: 0 },
+  normal: { noise: 0.7, caution: 0, homeDefense: 0.8, homeAttack: 0.2, reserve: 0 },
+  hard: { noise: 0.2, caution: 0, homeDefense: 1.0, homeAttack: 0.3, reserve: 0 },
 };
 
 export function botOrders(s: GameState, p: Player, level: BotLevel, seed: number): Orders {
@@ -58,7 +61,7 @@ export function botOrders(s: GameState, p: Player, level: BotLevel, seed: number
       const threat = Math.min(enemyEnergy, enemyAdj * 1.5 + prof.caution);
       const need = Math.ceil(threat) - cell.strength;
       if (need <= 0) continue;
-      const value = (cell.kind === "well" ? 7 : 2) * (myConn.has(idx) ? 1 : 0.3);
+      const value = (cell.kind === "well" ? WELL_VALUE : 2) * (myConn.has(idx) ? 1 : 0.3);
       cands.push({ idx, value, cost: need });
     } else if (idx === enemyHomeIdx) {
       const expectedDefense = Math.ceil(enemyEnergy * prof.homeAttack);
@@ -68,13 +71,13 @@ export function botOrders(s: GameState, p: Player, level: BotLevel, seed: number
       const cost = cell.strength + (contested ? prof.caution : 0) + 1;
       let value: number;
       if (cell.owner === enemy) {
-        value = cell.kind === "well" ? 10 : 4;
+        value = cell.kind === "well" ? WELL_VALUE + 3 : 4;
         // Hexes that hold the enemy's network together are worth more.
         const enemyNeighbors = b.neighbors[idx].filter((n) => s.cells[n].owner === enemy).length;
         value += enemyNeighbors * 0.6;
         if (!enemyConn.has(idx)) value *= 0.4; // already decaying
       } else {
-        value = cell.kind === "well" ? 9 : 3;
+        value = cell.kind === "well" ? WELL_VALUE + 2 : 3;
         // Late game: raw hex count matters most, cheap neutral hexes are great.
         if (lastTurns < 4) value += 2;
       }

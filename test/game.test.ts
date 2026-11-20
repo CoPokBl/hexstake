@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { board, mirror, newGame, resolveTurn, validateOrders, targetable, connected, GameState, Player } from "../shared/game";
 import { botOrders } from "../shared/bot";
+import { rusher } from "./strategies";
 
 test("board radius 4 has 61 cells and symmetric terrain", () => {
   const b = board(4);
@@ -95,4 +96,20 @@ test("hard bot beats easy bot more often than not", () => {
     if (s.winner === hardSide) hardWins++;
   }
   assert.ok(hardWins > 33, `hard won ${hardWins}/60`);
+});
+
+test("hard bot holds up against an all-in well rusher", () => {
+  let wins = 0;
+  const n = 80;
+  for (let seed = 1; seed <= n; seed++) {
+    let s = newGame(seed * 7 + 3);
+    const side: Player = (seed % 2) as Player;
+    while (!s.over) {
+      const o0 = side === 0 ? botOrders(s, 0, "hard", seed) : rusher(s, 0);
+      const o1 = side === 1 ? botOrders(s, 1, "hard", seed) : rusher(s, 1);
+      s = resolveTurn(s, o0, o1).state;
+    }
+    if (s.winner === side) wins++;
+  }
+  assert.ok(wins / n >= 0.6, `hard won ${wins}/${n} against the rusher`);
 });

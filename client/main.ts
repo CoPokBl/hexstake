@@ -3,6 +3,7 @@ import {
   DEFAULT_CONFIG, GameState, incomeFor, newGame, Orders, orderTotal, Player, resolveTurn, score, targetable, TurnResult,
 } from "../shared/game";
 import { h, clear, toast, timeAgo, fmtCoins, api, post, icon } from "./ui";
+import { markTutorialDone, Tutorial, TutorialCtx, tutorialDone } from "./tutorial";
 
 // ------------------------------------------------------------------ types
 
@@ -16,6 +17,7 @@ interface MatchView {
   id: string; mode: string; stake: number; seats: [SeatView, SeatView]; you: Player | null; state: GameState;
   deadline: number; serverNow: number; submitted: [boolean, boolean]; lastResult: TurnResult | null; eloChange: number | null;
   turnSeconds: number;
+  tutorial?: boolean;
 }
 interface ChallengeView {
   code: string; creator: { id: string; name: string }; acceptor: { id: string; name: string } | null; stake: number;
@@ -42,6 +44,7 @@ let challenge: ChallengeView | null = null;
 let queueing = false;
 let queueInfo = { waitingMs: 0, inQueue: 0 };
 let hudTimer: number | null = null;
+let tutorial: Tutorial | null = null;
 
 const app = document.getElementById("app")!;
 
@@ -278,7 +281,7 @@ function renderHome() {
         h("h1", {}, "Out-think. Out-bid. ", h("span", { class: "accent" }, "Out-hex.")),
         h("p", { class: "lead" }, "A fast duel of hidden bids on a hex map. Both players plan at the same time, then everything resolves at once. Claim wells, cut off supply lines and storm the enemy home."),
         h("div", { class: "cta" },
-          h("button", { class: "btn primary big", onclick: () => playBot("normal") }, "Play now"),
+          h("button", { class: "btn primary big", onclick: () => (tutorialDone() ? playBot("normal") : playBot("easy", true)) }, "Play now"),
           h("button", { class: "btn big", onclick: () => navigate("/rules") }, "How to play"),
         ),
         h("p", { class: "muted small" }, "Matches take about 3 minutes. No sign-in needed to play the bots."),
@@ -288,6 +291,7 @@ function renderHome() {
     h("section", { class: "cards" },
       card("Practice", "Play against the bot. Pick your poison.",
         h("div", { class: "row" },
+          h("button", { class: "btn", onclick: () => playBot("easy", true) }, "Tutorial"),
           h("button", { class: "btn", onclick: () => playBot("easy") }, "Easy"),
           h("button", { class: "btn", onclick: () => playBot("normal") }, "Normal"),
           h("button", { class: "btn", onclick: () => playBot("hard") }, "Hard"),
@@ -364,10 +368,10 @@ function stat(n: number, label: string) {
   return h("div", { class: "stat" }, h("b", {}, String(n ?? 0)), h("span", {}, label));
 }
 
-async function playBot(level: string) {
+async function playBot(level: string, asTutorial = false) {
   if (!(await ensureSession())) return toast("Couldn't start a session", "error");
-  send({ t: "bot", level });
-  void track("ui_play_bot", { level });
+  send({ t: "bot", level, tutorial: asTutorial });
+  void track(asTutorial ? "ui_tutorial_start" : "ui_play_bot", { level });
 }
 
 async function toggleQueue() {
@@ -705,11 +709,19 @@ function renderMatchHud() {
   const me_: Player = match.you ?? 0;
   const them: Player = me_ === 0 ? 1 : 0;
   const revealing = Date.now() < revealUntil && match.lastResult;
+  let tutCtx: TutorialCtx | null = null;
+  if (match.tutorial && match.you !== null && !s.over) {
+    tutCtx = { state: s, me: match.you, orders, submitted: match.submitted[match.you] };
+    if (!tutorial || tutorial.matchId !== match.id) tutorial = new Tutorial(match.id, tutCtx);
+    if (tutorial.update(tutCtx)) void track("ui_tutorial_step", { step: tutorial.current?.id ?? "done" });
+  }
+  const activeTutorial = tutCtx && tutorial && !tutorial.finished ? tutorial : null;
   if (renderer) {
     renderer.view = {
       state: s, me: match.you, orders, interactive: myTurnOpen() && !revealing,
       reveal: revealing ? { changes: match.lastResult!.changes, orders: match.lastResult!.orders } : null,
       hover: renderer.view?.hover ?? null,
+      focus: activeTutorial && tutCtx ? activeTutorial.focus(tutCtx) : null,
     };
     renderer.draw();
   }
@@ -751,8 +763,7 @@ function renderMatchHud() {
   if (match.submitted[me_]) {
     controls.append(h("p", { class: "locked" }, "Orders locked in. Waiting for your opponent…"));
   } else {
-    const guide = firstMatchGuide();
-    const guideEls = guide ? [guide] : [];
+    if (activeTutorial && tutCtx) controls.append(tutorialPanel(activeTutorial, tutCtx));
     controls.append(
       h("div", { class: "energy" }, h("b", {}, String(left)), h("span", {}, ` of ${s.energy[me_]} energy left`)),
       h("div", { class: "brushes" },
@@ -765,7 +776,6 @@ function renderMatchHud() {
         h("button", { class: "btn primary big grow", onclick: lockIn }, spent ? `Lock in (${spent})` : "Pass turn"),
         h("button", { class: "btn", onclick: () => { orders = {}; queueDraft(); renderMatchHud(); } }, "Clear"),
       ),
-      ...guideEls,
     );
   }
   controls.append(h("button", {
@@ -784,38 +794,27 @@ function incomeLine(s: GameState, p: Player) {
     `. Grab wells (+${s.config.wellIncome} each); other hexes give no energy.`);
 }
 
-const GUIDE_KEY = "hx_guide_seen";
-function guideCount(): number {
-  try {
-    return Number(localStorage.getItem(GUIDE_KEY) ?? "0");
-  } catch {
-    return 99;
-  }
-}
-
-/** A short how-to that shows during a player's first couple of matches. */
-function firstMatchGuide() {
-  if (!match || match.state.turn > 6 || guideCount() >= 2) return null;
-  const box = h("div", { class: "guide" },
-    h("b", {}, "How to play"),
-    h("ol", {},
-      h("li", {}, "Your ", h("b", {}, "home"), " is the hex with the house. If it's captured you lose, so watch your opponent's energy bank."),
-      h("li", {}, "Tap the dashed hexes to spend energy: claim neutral hexes, attack enemy ones, or fortify your own."),
-      h("li", {}, "Ringed ", h("b", {}, "wells"), " give +2 energy every turn while they're connected to your home. Nothing else adds income."),
-      h("li", {}, "Both players move at the same time. Hit ", h("b", {}, "Lock in"), " when you're done."),
-    ),
-    h("button", {
-      class: "btn small", onclick: () => {
-        try {
-          localStorage.setItem(GUIDE_KEY, "2");
-        } catch {
-          /* ignore */
-        }
-        box.remove();
-      },
-    }, "Got it"),
+/** The coach panel for the interactive tutorial. */
+function tutorialPanel(t: Tutorial, c: TutorialCtx) {
+  const step = t.current!;
+  return h("div", { class: "guide" },
+    h("div", { class: "row spread" }, h("b", {}, "Tutorial"), h("span", { class: "muted small" }, t.progress)),
+    h("p", {}, step.text(c, t)),
+    step.button
+      ? h("button", {
+          class: `btn small ${step.done ? "" : "primary"}`,
+          onclick: () => {
+            t.next();
+            if (t.finished) {
+              markTutorialDone();
+              void track("ui_tutorial_done", {});
+              toast("Tutorial complete! Finish the match, then try the Normal bot or Ranked.");
+            }
+            renderMatchHud();
+          },
+        }, step.button)
+      : null,
   );
-  return box;
 }
 
 function endPanel() {
@@ -832,7 +831,8 @@ function endPanel() {
     elo !== null ? h("p", { class: "elo" }, `Rating ${elo >= 0 ? "+" : ""}${elo}`) : null,
     m.stake && m.you !== null ? h("p", {}, draw ? `Stakes refunded (${m.stake} coins).` : youWon ? `${m.stake * 2 - Math.floor((m.stake * 2 * me.rakePercent) / 100)} coins are on their way to your Serble balance.` : `You lost your ${m.stake}-coin stake.`) : null,
     h("div", { class: "row" },
-      m.mode === "bot" ? h("button", { class: "btn primary", onclick: () => playBot(m.seats.find((x) => x.bot)?.bot ?? "normal") }, "Rematch") : null,
+      m.tutorial ? h("button", { class: "btn primary", onclick: () => playBot("easy") }, "Play the Easy bot") : null,
+      m.mode === "bot" && !m.tutorial ? h("button", { class: "btn primary", onclick: () => playBot(m.seats.find((x) => x.bot)?.bot ?? "normal") }, "Rematch") : null,
       m.mode === "ranked" ? h("button", { class: "btn primary", onclick: () => { navigate("/"); toggleQueue(); } }, "Play again") : null,
       h("a", { class: "btn", href: `/m/${m.id}?replay=1`, onclick: (e: Event) => { e.preventDefault(); match = null; navigate(`/m/${m.id}`); } }, "Replay"),
       h("a", { class: "btn", href: "/" }, "Home"),
@@ -843,11 +843,7 @@ function endPanel() {
 
 function onMatchEnd() {
   if (!match) return;
-  try {
-    localStorage.setItem(GUIDE_KEY, String(guideCount() + 1));
-  } catch {
-    /* ignore */
-  }
+  if (match.tutorial) markTutorialDone();
   const won = match.you !== null && match.state.winner === match.you;
   if (won) navigator.vibrate?.([30, 50, 30]);
   void refreshMe();
@@ -1068,7 +1064,7 @@ function renderRules() {
     ),
     h("h3", {}, "Coin matches"),
     h("p", {}, `Challenges can carry a stake in Serble coins. Both players approve their stake on Serble's consent page before the match starts. The winner receives the pot minus a ${me.rakePercent}% house cut (rounded down, so tiny pots are free). Draws, cancelled lobbies and unfinished matches are refunded.`),
-    h("a", { class: "btn primary", href: "/", onclick: (e: Event) => { e.preventDefault(); playBot("easy"); } }, "Try it vs the easy bot"),
+    h("a", { class: "btn primary", href: "/", onclick: (e: Event) => { e.preventDefault(); playBot("easy", true); } }, "Play the interactive tutorial"),
   ));
 }
 

@@ -26,6 +26,8 @@ export interface Client {
 }
 
 const MAX_MISSED = 3;
+const TUTORIAL_PASSIVE_TURNS = 3;
+const TUTORIAL_TURN_SECONDS = 90;
 const FIRST_TURN_BONUS_MS = 8000;
 
 export interface MatchHooks {
@@ -44,6 +46,10 @@ export class LiveMatch {
   private botTimers: NodeJS.Timeout[] = [];
   eloChange: number | null = null;
   finishing = false;
+  /** Seconds per turn for this match (tutorials are relaxed). */
+  turnSeconds = config.turnSeconds;
+  /** Tutorial matches: the bot holds still for the first few turns. */
+  tutorial = false;
 
   constructor(
     private mgr: MatchManager,
@@ -76,7 +82,8 @@ export class LiveMatch {
       submitted: [this.pending[0] !== null, this.pending[1] !== null],
       lastResult: this.lastResult,
       eloChange: this.eloChange,
-      turnSeconds: config.turnSeconds,
+      turnSeconds: this.turnSeconds,
+      tutorial: this.tutorial,
     };
   }
 
@@ -103,7 +110,7 @@ export class LiveMatch {
     this.clearTimers();
     this.pending = [null, null];
     this.drafts = [null, null];
-    this.deadline = now() + config.turnSeconds * 1000 + extraMs;
+    this.deadline = now() + this.turnSeconds * 1000 + extraMs;
     this.timer = setTimeout(() => this.resolve(), this.deadline - now());
     this.seats.forEach((seat, p) => {
       if (!seat.bot) return;
@@ -113,9 +120,9 @@ export class LiveMatch {
       this.botTimers.push(
         setTimeout(() => {
           if (this.state.over) return;
-          const o = botOrders(this.state, p as Player, level, this.botSeed);
+          const o = this.tutorial && this.state.turn <= TUTORIAL_PASSIVE_TURNS ? {} : botOrders(this.state, p as Player, level, this.botSeed);
           this.submit(p as Player, o);
-        }, Math.min(delay, config.turnSeconds * 1000 - 500)),
+        }, Math.min(delay, this.turnSeconds * 1000 - 500)),
       );
     });
   }
@@ -229,12 +236,16 @@ export class MatchManager {
 
   constructor(private db: DB) {}
 
-  create(mode: Mode, seats: [Seat, Seat], stake = 0, opts: { id?: string; swap?: boolean } = {}): LiveMatch {
+  create(mode: Mode, seats: [Seat, Seat], stake = 0, opts: { id?: string; swap?: boolean; tutorial?: boolean } = {}): LiveMatch {
     const seed = (Math.random() * 2 ** 31) >>> 0;
     const botSeed = (Math.random() * 2 ** 31) >>> 0;
     // Randomize who plays which side.
     if (opts.swap ?? Math.random() < 0.5) seats = [seats[1], seats[0]];
     const m = new LiveMatch(this, opts.id ?? randomId(9), mode, seats, stake, newGame(seed), botSeed, [], now());
+    if (opts.tutorial) {
+      m.tutorial = true;
+      m.turnSeconds = TUTORIAL_TURN_SECONDS;
+    }
     this.db
       .prepare(`INSERT INTO matches (id, mode, p0, p1, p0_name, p1_name, seed, stake, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`)
@@ -258,6 +269,7 @@ export class MatchManager {
   persist(m: LiveMatch) {
     const snap = JSON.stringify({
       state: m.state, botSeed: m.botSeed, history: m.history, missed: m.missed, seats: m.seats, lastResult: m.lastResult,
+      tutorial: m.tutorial, turnSeconds: m.turnSeconds,
     });
     this.db.prepare("UPDATE matches SET snapshot = ?, turns = ? WHERE id = ?").run(snap, m.state.turn - 1, m.id);
   }
@@ -308,6 +320,8 @@ export class MatchManager {
         const m = new LiveMatch(this, r.id, r.mode, snap.seats, r.stake, snap.state, snap.botSeed, snap.history, r.created_at);
         m.missed = snap.missed;
         m.lastResult = snap.lastResult;
+        m.tutorial = Boolean(snap.tutorial);
+        m.turnSeconds = snap.turnSeconds ?? config.turnSeconds;
         this.live.set(m.id, m);
         m.start(10_000); // give players time to reconnect
         log.info("resumed match", { id: m.id, turn: m.state.turn });

@@ -33,6 +33,8 @@ export interface BoardView {
   reveal?: { changes: CellChange[]; orders: [Orders, Orders] } | null;
   interactive: boolean;
   hover?: number | null;
+  /** Hex to draw attention to (tutorial). */
+  focus?: number | null;
 }
 
 const SQRT3 = Math.sqrt(3);
@@ -175,7 +177,8 @@ export class BoardRenderer {
         ctx.fillText("+2", x, y + inner * 0.47);
       }
       if (cell.kind === "home") {
-        const homeColor = cell.owner === mine || (cell.owner === null && s.homes[mine] === idx) ? p.mine : p.theirs;
+        // Owned homes are filled with the owner's colour, so mark them in white to stay visible.
+        const homeColor = cell.owner !== null ? "#ffffff" : s.homes[mine] === idx ? p.mine : p.theirs;
         ctx.strokeStyle = homeColor;
         ctx.lineWidth = Math.max(2, this.size * 0.12);
         this.hexPath(x, y, inner * 0.72);
@@ -233,6 +236,39 @@ export class BoardRenderer {
         }
       }
     });
+    this.drawFocus();
+  }
+
+  private pulseFrame: number | null = null;
+
+  /** Pulsing ring around the focused hex; keeps animating while a focus is set. */
+  private drawFocus() {
+    const v = this.view;
+    if (!v || v.focus === null || v.focus === undefined) {
+      delete this.canvas.dataset.focus;
+      if (this.pulseFrame !== null) cancelAnimationFrame(this.pulseFrame);
+      this.pulseFrame = null;
+      return;
+    }
+    const ctx = this.ctx;
+    const [x, y] = this.toPixel(this.b.coords[v.focus]);
+    // Exposed for accessibility tooling and automated UI tests.
+    this.canvas.dataset.focus = `${Math.round(x)},${Math.round(y)}`;
+    const t = (performance.now() % 1200) / 1200;
+    ctx.save();
+    ctx.strokeStyle = this.pal.highlight;
+    ctx.lineWidth = Math.max(3, this.size * 0.14);
+    ctx.globalAlpha = 1 - t * 0.7;
+    this.hexPath(x, y, this.size * (0.98 + t * 0.35));
+    ctx.stroke();
+    ctx.restore();
+    if (this.pulseFrame === null) {
+      const loop = () => {
+        this.pulseFrame = null;
+        if (this.view?.focus !== null && this.view?.focus !== undefined && this.canvas.isConnected) this.draw();
+      };
+      this.pulseFrame = requestAnimationFrame(loop);
+    }
   }
 
   /** Small house glyph marking a home hex. */

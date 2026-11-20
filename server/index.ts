@@ -481,7 +481,15 @@ function onSocket(ws: WebSocket, session: Session) {
         const level: BotLevel = BOT_LEVELS.includes(msg.level) ? msg.level : "normal";
         if (mm.activeFor(client.userId)) return err("finish your current match first");
         dequeue(client.userId);
-        const m = mm.create("bot", [seatFor(client.userId, client.name), { id: `bot:${level}`, name: `Bot (${level})`, elo: { easy: 800, normal: 1000, hard: 1200 }[level], bot: level }]);
+        const tutorial = msg.tutorial === true;
+        const lvl: BotLevel = tutorial ? "easy" : level;
+        const m = mm.create(
+          "bot",
+          [seatFor(client.userId, client.name), { id: `bot:${lvl}`, name: tutorial ? "Tutorial bot" : `Bot (${lvl})`, elo: { easy: 800, normal: 1000, hard: 1200 }[lvl], bot: lvl }],
+          0,
+          { tutorial },
+        );
+        if (tutorial) track("tutorial_start", client.userId);
         return attachPlayers(m);
       }
       case "queue": {
