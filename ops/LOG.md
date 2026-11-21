@@ -14,6 +14,8 @@
   (`e89899f`) are not live yet. The deploy script now waits for the Komodo job and prints its
   stage logs, so this shows up clearly. Reported to the owner.
 - 21:56 retry: same error ("Server is unreachable or disabled"). Leaving it for the daily run.
+- 23:05: the owner reported Komodo recovered. Redeployed, and `sha-0d3bbd6` is live with the phone fixes.
+  Owner-side problems now go to the owner's ntfy topic (see CLAUDE.md).
 - Next: check the tutorial funnel again tomorrow. If players still drop at step 2, make the
   first claim one tap with no brush choice.
 

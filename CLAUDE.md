@@ -28,6 +28,9 @@ secrets, operator endpoints and the economy.
    client errors, failed payments and feedback, and fix what you find.
 4. Make one meaningful improvement guided by the data (onboarding, balance, UX, features).
 5. Record what you did and what you learned in `ops/LOG.md`, newest entry at the top.
+6. Problems on the owner's side (Komodo/server unreachable, Tailscale, DNS/TLS, Serble settings):
+   notify them once per distinct problem via their ntfy topic. The URL is in the scheduled task's
+   private prompt and deliberately kept out of this public repo.
 
 ## Architecture in one breath
 
