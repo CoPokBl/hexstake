@@ -587,7 +587,8 @@ function buildGameUi(main: HTMLElement) {
   const canvas = h("canvas", { class: "board", id: "board" }) as HTMLCanvasElement;
   const hud = h("div", { class: "hud", id: "hud" });
   const controls = h("div", { class: "controls", id: "controls" });
-  main.append(h("div", { class: "game" }, h("div", { class: "board-wrap" }, canvas), h("aside", { class: "side" }, hud, controls)));
+  const coach = h("div", { class: "coach", id: "coach" });
+  main.append(h("div", { class: "game" }, h("div", { class: "board-col" }, coach, h("div", { class: "board-wrap" }, canvas)), h("aside", { class: "side" }, hud, controls)));
   renderer = new BoardRenderer(canvas, match!.state.config.radius);
   const r = renderer;
   const resize = () => {
@@ -760,10 +761,21 @@ function renderMatchHud() {
   }
   const spent = orderTotal(orders);
   const left = s.energy[me_] - spent;
+  // Tutorial coach sits above the board so it's visible on phones too.
+  const coach = document.getElementById("coach");
+  if (coach) {
+    clear(coach);
+    if (activeTutorial && tutCtx) coach.append(tutorialPanel(activeTutorial, tutCtx));
+  }
   if (match.submitted[me_]) {
     controls.append(h("p", { class: "locked" }, "Orders locked in. Waiting for your opponent…"));
   } else {
-    if (activeTutorial && tutCtx) controls.append(tutorialPanel(activeTutorial, tutCtx));
+    // Phones: a fixed bar keeps the key actions on screen (hidden on wide screens via CSS).
+    controls.append(h("div", { class: "mobile-bar" },
+      h("span", { class: "mb-energy" }, h("b", {}, String(left)), " energy left"),
+      h("button", { class: "btn", onclick: () => { orders = {}; queueDraft(); renderMatchHud(); } }, "Clear"),
+      h("button", { class: "btn primary", onclick: lockIn }, spent ? `Lock in (${spent})` : "Pass turn"),
+    ));
     controls.append(
       h("div", { class: "energy" }, h("b", {}, String(left)), h("span", {}, ` of ${s.energy[me_]} energy left`)),
       h("div", { class: "brushes" },
@@ -805,6 +817,7 @@ function tutorialPanel(t: Tutorial, c: TutorialCtx) {
           class: `btn small ${step.done ? "" : "primary"}`,
           onclick: () => {
             t.next();
+            void track("ui_tutorial_step", { step: t.current?.id ?? "done" });
             if (t.finished) {
               markTutorialDone();
               void track("ui_tutorial_done", {});

@@ -1,5 +1,17 @@
 # Maintenance log
 
+## 2026-11-21: tutorial was invisible on phones
+- Health OK, no errors, no issues or PRs, no payments in 24h. 10 matches, 3 active players.
+- Funnel: 5 tutorial starts, **0** step events. All 5 tutorial players placed no orders, then
+  resigned after turn 1 or abandoned. Cause: on phones the coach panel and the Lock in button sat
+  below the fold, so new players saw only a board with no instructions.
+- Fixes: the coach now renders above the board on every screen size; phones get a fixed bottom
+  bar with energy left, Clear and Lock in; and the canvas no longer flashes the mobile
+  tap-highlight. Tutorial steps advanced by button are now tracked, so the funnel is complete.
+- Verified on an iPhone 13 viewport with taps only: home → claim → lock in → claimed.
+- Next: check the tutorial funnel again tomorrow. If players still drop at step 2, make the
+  first claim one tap with no brush choice.
+
 ## 2026-11-20 (evening run): interactive tutorial, stronger bots
 - Health OK, all deploys and smoke tests green, no open issues or PRs, no errors, no stuck
   payments. 18 matches in 24h; ranked is picking up (7 matches). One staked match paid out.
