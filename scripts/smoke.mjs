@@ -14,7 +14,7 @@ try {
   await page.click("text=Play now");
   await page.waitForSelector("canvas.board", { timeout: 15000 });
   await page.waitForSelector("text=Turn 1", { timeout: 10000 });
-  await page.click('button:has-text("Pass turn")');
+  await page.click('button:has-text("Pass turn"):visible');
   await page.waitForSelector("text=Turn 2", { timeout: 40000 });
   page.once("dialog", (d) => d.accept());
   await page.click("text=Resign");
