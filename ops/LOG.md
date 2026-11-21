@@ -9,6 +9,10 @@
   bar with energy left, Clear and Lock in; and the canvas no longer flashes the mobile
   tap-highlight. Tutorial steps advanced by button are now tracked, so the funnel is complete.
 - Verified on an iPhone 13 viewport with taps only: home → claim → lock in → claimed.
+- **Deploy blocked (infra):** Komodo reports "Cannot send command when Server is unreachable or
+  disabled" for the deployment's server. Production keeps serving `sha-2b0b783`; the phone fixes
+  (`e89899f`) are not live yet. The deploy script now waits for the Komodo job and prints its
+  stage logs, so this shows up clearly. Reported to the owner.
 - Next: check the tutorial funnel again tomorrow. If players still drop at step 2, make the
   first claim one tap with no brush choice.
 

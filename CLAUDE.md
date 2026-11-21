@@ -19,7 +19,9 @@ secrets, operator endpoints and the economy.
 
 ## Maintenance loop (what a scheduled session should do)
 
-1. Check health: `curl -fsS https://hexstake.app/healthz`.
+1. Check health: `curl -fsS https://hexstake.app/healthz`. If its `version` isn't `sha-<first 7 of main HEAD>`,
+   the last deploy didn't land: read the Build & Deploy log, and re-run it with
+   `gh api -X POST repos/CoPokBl/hexstake/actions/workflows/deploy.yml/dispatches -f ref=main`.
 2. Triage new issues and PRs on CoPokBl/hexstake: reply, label, fix, close. Be friendly and concise.
    Review outside PRs carefully, especially anything touching money or auth.
 3. Pull analytics from `/api/admin/analytics?days=7` and `/api/admin/economy`. Look for errors,
