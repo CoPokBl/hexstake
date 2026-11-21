@@ -35,4 +35,23 @@ komodo write "$(jq -n --arg id "$KOMODO_DEPLOYMENT" --argjson config "$CONFIG" \
   || echo "::warning::UpdateDeployment failed; deploying with existing config"
 
 echo "Deploying"
-komodo execute "$(jq -n --arg d "$KOMODO_DEPLOYMENT" '{type: "Deploy", params: {deployment: $d}}')" | jq -c '{id: ._id, operation, success}' || exit 1
+UPDATE=$(komodo execute "$(jq -n --arg d "$KOMODO_DEPLOYMENT" '{type: "Deploy", params: {deployment: $d}}')") || exit 1
+UPDATE_ID=$(jq -r '._id["$oid"] // ._id // empty' <<<"$UPDATE")
+echo "Komodo update $UPDATE_ID queued"
+
+# Execute returns as soon as the job is queued; wait for it to finish and show what happened.
+for i in $(seq 1 60); do
+  U=$(komodo read "$(jq -n --arg id "$UPDATE_ID" '{type: "GetUpdate", params: {id: $id}}')") || break
+  STATUS=$(jq -r '.status' <<<"$U")
+  if [[ "$STATUS" == "Complete" ]]; then
+    jq -r '.logs[]? | "--- \(.stage) (success=\(.success))\n\(.stdout // "")\(.stderr // "")"' <<<"$U" | cut -c1-400 | tail -60
+    if [[ "$(jq -r '.success' <<<"$U")" != "true" ]]; then
+      echo "::error::Komodo deploy failed (see stages above)"
+      exit 1
+    fi
+    echo "Komodo deploy complete"
+    exit 0
+  fi
+  sleep 3
+done
+echo "::warning::Komodo update still $STATUS after 3 minutes"
