@@ -13,6 +13,7 @@
   disabled" for the deployment's server. Production keeps serving `sha-2b0b783`; the phone fixes
   (`e89899f`) are not live yet. The deploy script now waits for the Komodo job and prints its
   stage logs, so this shows up clearly. Reported to the owner.
+- 21:56 retry: same error ("Server is unreachable or disabled"). Leaving it for the daily run.
 - Next: check the tutorial funnel again tomorrow. If players still drop at step 2, make the
   first claim one tap with no brush choice.
 
