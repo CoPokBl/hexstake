@@ -14,13 +14,18 @@ try {
   await page.click("text=Play now");
   await page.waitForSelector("canvas.board", { timeout: 15000 });
   await page.waitForSelector("text=Turn 1", { timeout: 10000 });
-  await page.click('button:has-text("Pass turn"):visible');
+  // First visit starts the tutorial: tap the highlighted hex, then lock in.
+  await page.waitForSelector("canvas.board[data-focus]", { timeout: 10000 });
+  const [fx, fy] = (await page.locator("canvas.board").getAttribute("data-focus")).split(",").map(Number);
+  const box = await page.locator("canvas.board").boundingBox();
+  await page.mouse.click(box.x + fx, box.y + fy);
+  await page.click('button:has-text("Lock in"):visible');
   await page.waitForSelector("text=Turn 2", { timeout: 40000 });
   page.once("dialog", (d) => d.accept());
   await page.click("text=Resign");
   await page.waitForSelector(".end", { timeout: 10000 });
   ok = true;
-  console.log("smoke: bot match started, turn resolved, resign ended the match");
+  console.log("smoke: tutorial match started, claim + lock in resolved a turn, resign ended the match");
 } catch (e) {
   console.log("smoke failed:", String(e).split("\n")[0]);
   await page.screenshot({ path: "smoke-failure.png" });

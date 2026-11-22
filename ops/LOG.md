@@ -1,5 +1,17 @@
 # Maintenance log
 
+## 2026-11-22: tutorial players skip the coach and hit Pass turn
+- Health OK, live = main HEAD, no issues or PRs, no payments, no errors. One transient 500 on
+  /api/admin/analytics: my operator login check against Serble timed out, and a retry was fine.
+- Tutorial funnel since the phone fix: 4 starts, still 0 step events. All 4 pressed "Pass turn"
+  (lock-in events) without touching the coach, then resigned after about 1.5 turns. The big green
+  Pass turn button beat a paragraph plus a small "Next".
+- Fix: merged the home and claim steps, so the first instruction is one tap on the board. Lock in
+  and Pass turn are disabled ("Tap the hex first") until that tap. `ui_tutorial_start` now records
+  screen width, to separate phones from desktops.
+- The smoke test now runs the first-visit path: tutorial, tap the highlighted hex, lock in, turn
+  resolves, resign.
+
 ## 2026-11-21: tutorial was invisible on phones
 - Health OK, no errors, no issues or PRs, no payments in 24h. 10 matches, 3 active players.
 - Funnel: 5 tutorial starts, **0** step events. All 5 tutorial players placed no orders, then

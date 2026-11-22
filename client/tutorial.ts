@@ -21,20 +21,15 @@ interface Step {
 
 const STEPS: Step[] = [
   {
-    id: "home",
-    text: () => "This is your home: the hex with the house. If your opponent captures it, you lose.",
-    focus: (c) => c.state.homes[c.me],
-    button: "Next",
-  },
-  {
     id: "claim",
-    text: () => "Tap the pulsing hex to put 1 energy on it. Energy on a neutral hex is a bid to claim it.",
+    text: () =>
+      "Your home is the hex with the house: if your opponent captures it, you lose. Start by tapping the pulsing hex next to it to claim it.",
     focus: (_c, t) => t.claimTarget,
     done: (c, t) => (t.claimTarget !== null ? (c.orders[t.claimTarget] ?? 0) > 0 : Object.keys(c.orders).length > 0),
   },
   {
     id: "lock",
-    text: () => "Now press Lock in. Both players plan at the same time, then every order resolves at once.",
+    text: () => "That put 1 energy on it: a bid to claim it. Now press Lock in. Both players plan at the same time, then every order resolves at once.",
     done: (c) => c.submitted,
   },
   {
@@ -106,6 +101,11 @@ export class Tutorial {
     const options = b.neighbors[home].filter((n) => init.state.cells[n].kind === "plain" && init.state.cells[n].owner === null);
     options.sort((x, y) => (well === null ? 0 : distance(b.coords[x], b.coords[well]) - distance(b.coords[y], b.coords[well])));
     this.claimTarget = options[0] ?? null;
+  }
+
+  /** True while the player must act on the board before locking in. */
+  get blocksLockIn(): boolean {
+    return this.current?.id === "claim";
   }
 
   get current(): Step | null {

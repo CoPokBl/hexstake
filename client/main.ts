@@ -371,7 +371,7 @@ function stat(n: number, label: string) {
 async function playBot(level: string, asTutorial = false) {
   if (!(await ensureSession())) return toast("Couldn't start a session", "error");
   send({ t: "bot", level, tutorial: asTutorial });
-  void track(asTutorial ? "ui_tutorial_start" : "ui_play_bot", { level });
+  void track(asTutorial ? "ui_tutorial_start" : "ui_play_bot", { level, w: window.innerWidth });
 }
 
 async function toggleQueue() {
@@ -681,6 +681,7 @@ function toggleEraser() {
 
 function lockIn() {
   if (!match || !myTurnOpen()) return;
+  if (match.tutorial && tutorial && !tutorial.finished && tutorial.blocksLockIn) return toast("Tap the pulsing hex first");
   send({ t: "orders", matchId: match.id, orders, turn: match.state.turn });
   match.submitted[match.you!] = true;
   void track("ui_lock_in", { spent: orderTotal(orders), turn: match.state.turn });
@@ -767,6 +768,8 @@ function renderMatchHud() {
     clear(coach);
     if (activeTutorial && tutCtx) coach.append(tutorialPanel(activeTutorial, tutCtx));
   }
+  // In the tutorial, the first action must be a tap on the board, not Pass turn.
+  const lockBlocked = Boolean(activeTutorial?.blocksLockIn);
   if (match.submitted[me_]) {
     controls.append(h("p", { class: "locked" }, "Orders locked in. Waiting for your opponent…"));
   } else {
@@ -774,7 +777,9 @@ function renderMatchHud() {
     controls.append(h("div", { class: "mobile-bar" },
       h("span", { class: "mb-energy" }, h("b", {}, String(left)), " energy left"),
       h("button", { class: "btn", onclick: () => { orders = {}; queueDraft(); renderMatchHud(); } }, "Clear"),
-      h("button", { class: "btn primary", onclick: lockIn }, spent ? `Lock in (${spent})` : "Pass turn"),
+      lockBlocked
+        ? h("button", { class: "btn", disabled: true }, "Tap the hex first")
+        : h("button", { class: "btn primary", onclick: lockIn }, spent ? `Lock in (${spent})` : "Pass turn"),
     ));
     controls.append(
       h("div", { class: "energy" }, h("b", {}, String(left)), h("span", {}, ` of ${s.energy[me_]} energy left`)),
@@ -785,7 +790,9 @@ function renderMatchHud() {
       incomeLine(s, me_),
       h("p", { class: "muted small" }, "Tap highlighted hexes to place energy: on your own hexes to fortify, on neighbours to claim or attack. Placed energy locks in automatically when time runs out."),
       h("div", { class: "row" },
-        h("button", { class: "btn primary big grow", onclick: lockIn }, spent ? `Lock in (${spent})` : "Pass turn"),
+        lockBlocked
+          ? h("button", { class: "btn big grow", disabled: true }, "Tap the pulsing hex first")
+          : h("button", { class: "btn primary big grow", onclick: lockIn }, spent ? `Lock in (${spent})` : "Pass turn"),
         h("button", { class: "btn", onclick: () => { orders = {}; queueDraft(); renderMatchHud(); } }, "Clear"),
       ),
     );
