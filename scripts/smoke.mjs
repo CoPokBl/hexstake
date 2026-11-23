@@ -4,7 +4,8 @@ import { chromium } from "playwright";
 
 const base = process.argv[2] ?? "https://hexstake.app";
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+// Marked as synthetic so the server keeps it out of analytics.
+const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, extraHTTPHeaders: { "x-hexstake-synthetic": "1" } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));

@@ -113,6 +113,13 @@ button.link.danger { color: var(--danger); }
 .hero .lead { font-size: 1.1rem; color: var(--text-dim); max-width: 34rem; }
 .hero-board { width: 100%; aspect-ratio: 1.1; }
 .cta { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.daily { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; align-items: center; margin-bottom: 1.5rem; padding: 1.25rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--p-theirs); box-shadow: var(--shadow); }
+.daily h2 { margin-bottom: .35rem; }
+.daily p { color: var(--text-dim); }
+.daily-board { display: flex; flex-direction: column; gap: .35rem; }
+.daily-row { padding: .35rem .6rem; border-radius: 8px; background: var(--surface-2); }
+.daily-row.me { outline: 2px solid var(--p-mine); }
+.tag.daily { background: #ffedd5; color: #9a3412; }
 .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem; box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .card p { color: var(--text-dim); flex: 1; }
@@ -220,6 +227,7 @@ body.offline .offline-banner { display: block; }
   .hero { grid-template-columns: 1fr; }
   .hero-board { max-height: 260px; order: -1; }
   .cards { grid-template-columns: 1fr; }
+  .daily { grid-template-columns: 1fr; }
   .split { grid-template-columns: 1fr; }
   .game { grid-template-columns: 1fr; }
   .side { position: static; }

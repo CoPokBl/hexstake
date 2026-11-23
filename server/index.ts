@@ -12,7 +12,7 @@ import { randomId } from "./crypto";
 import { openDb, now } from "./db";
 import { Economy } from "./economy";
 import { log } from "./log";
-import { Client, LiveMatch, MatchManager, Seat } from "./matches";
+import { Client, dailySeed, LiveMatch, MatchManager, Seat } from "./matches";
 import { economyReady, saveSecrets, secrets, signInReady } from "./secrets";
 import * as serble from "./serble";
 
@@ -207,7 +207,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
   if (path === "/api/guest" && method === "POST") {
     if (session) return send(res, 200, { user: userView(session) });
-    const g = auth.guestSession();
+    const ua = String(req.headers["user-agent"] ?? "");
+    const synthetic = Boolean(req.headers["x-hexstake-synthetic"]) || /HeadlessChrome|Playwright/i.test(ua);
+    const g = auth.guestSession(synthetic);
     track("guest_start", g.session.userId);
     return send(res, 200, { user: userView(g.session) }, { "Set-Cookie": g.cookie });
   }
@@ -266,6 +268,26 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL, session:
     });
   }
   if (path === "/api/stats") return send(res, 200, publicStats(db));
+  if (path === "/api/daily") {
+    const { day } = dailySeed();
+    const start = Date.parse(`${day}T00:00:00Z`);
+    // Best (fewest-turn) win per player today; synthetic test players excluded.
+    const board = db
+      .prepare(`SELECT p0 player, p0_name name, MIN(turns) turns, COUNT(*) wins FROM matches
+                WHERE mode = 'daily' AND status = 'finished' AND winner = 0 AND created_at >= ?
+                  AND p0 NOT LIKE 'guest:synth-%'
+                GROUP BY p0 ORDER BY turns ASC, MIN(ended_at) ASC LIMIT 20`)
+      .all(start) as { player: string; name: string; turns: number; wins: number }[];
+    const plays = (db.prepare("SELECT COUNT(*) n, COUNT(DISTINCT p0) players FROM matches WHERE mode = 'daily' AND created_at >= ? AND p0 NOT LIKE 'guest:synth-%'").get(start) as { n: number; players: number });
+    const me = session?.userId;
+    return send(res, 200, {
+      day,
+      resetsAt: start + 86400_000,
+      plays: plays.n,
+      players: plays.players,
+      leaderboard: board.map((r, i) => ({ rank: i + 1, name: r.name, turns: r.turns, you: r.player === me, guest: r.player.startsWith("guest:") })),
+    });
+  }
   if (path === "/api/leaderboard") {
     const rows = db
       .prepare("SELECT id, username, elo, games, wins, losses, draws FROM users WHERE games > 0 ORDER BY elo DESC, wins DESC LIMIT 100")
@@ -477,6 +499,15 @@ function onSocket(ws: WebSocket, session: Session) {
     switch (msg.t) {
       case "ping":
         return client.send({ t: "pong", serverNow: now() });
+      case "daily": {
+        if (mm.activeFor(client.userId)) return err("finish your current match first");
+        dequeue(client.userId);
+        const { day, seed } = dailySeed();
+        // Same map for everyone; the player always takes seat 0 so attempts are comparable.
+        const m = mm.create("daily", [seatFor(client.userId, client.name), { id: "bot:hard", name: "Daily boss (hard)", elo: 1200, bot: "hard" }], 0, { seed, swap: false });
+        track("daily_start", client.userId, { day });
+        return attachPlayers(m);
+      }
       case "bot": {
         const level: BotLevel = BOT_LEVELS.includes(msg.level) ? msg.level : "normal";
         if (mm.activeFor(client.userId)) return err("finish your current match first");

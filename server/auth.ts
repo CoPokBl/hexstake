@@ -54,9 +54,10 @@ export class Auth {
     };
   }
 
-  guestSession(): { session: Session; cookie: string } {
+  /** Synthetic guests (smoke tests, headless browsers) get a `guest:synth-` id so analytics can skip them. */
+  guestSession(synthetic = false): { session: Session; cookie: string } {
     const n = Math.floor(1000 + Math.random() * 9000);
-    return this.createSession(`guest:${randomId(8)}`, `Guest${n}`);
+    return this.createSession(`guest:${synthetic ? "synth-" : ""}${randomId(8)}`, `Guest${n}`);
   }
 
   destroy(req: IncomingMessage): string {

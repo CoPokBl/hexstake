@@ -288,6 +288,14 @@ function renderHome() {
       ),
       preview,
     ),
+    h("section", { class: "daily", id: "daily" },
+      h("div", { class: "daily-text" },
+        h("h2", {}, "Daily challenge"),
+        h("p", {}, "Everyone gets the same map today, against the Hard bot. Win in as few turns as you can to top the board."),
+        h("button", { class: "btn primary", onclick: () => playDaily() }, "Play today's map"),
+      ),
+      h("div", { class: "daily-board", id: "daily-board" }, h("p", { class: "muted small" }, "Loading today's board…")),
+    ),
     h("section", { class: "cards" },
       card("Practice", "Play against the bot. Pick your poison.",
         h("div", { class: "row" },
@@ -351,6 +359,17 @@ function renderHome() {
         h("span", { class: "muted" }, ` · ${w ? `${w} won` : "draw"}${m.stake ? ` · ${m.stake}⬡` : ""} · ${timeAgo(m.ended_at)}`)));
     }
   });
+  api("/api/daily").then((d) => {
+    const el = document.getElementById("daily-board");
+    if (!el || !d) return;
+    clear(el);
+    const hours = Math.max(0, Math.ceil((d.resetsAt - Date.now()) / 3600_000));
+    el.append(h("div", { class: "muted small" }, `${d.day} · ${d.players} player${d.players === 1 ? "" : "s"} · new map in ${hours}h`));
+    if (!d.leaderboard.length) el.append(h("p", { class: "muted" }, "Nobody has beaten today's map yet. Be the first!"));
+    for (const r of d.leaderboard.slice(0, 5)) {
+      el.append(h("div", { class: `daily-row ${r.you ? "me" : ""}` }, h("b", {}, `#${r.rank}`), ` ${r.name}`, h("span", { class: "muted" }, ` · won in ${r.turns} turns`)));
+    }
+  });
   api("/api/stats").then((s) => {
     const el = document.getElementById("stats");
     if (!el || !s) return;
@@ -366,6 +385,12 @@ function card(title: string, text: string, actions: Node) {
 }
 function stat(n: number, label: string) {
   return h("div", { class: "stat" }, h("b", {}, String(n ?? 0)), h("span", {}, label));
+}
+
+async function playDaily() {
+  if (!(await ensureSession())) return toast("Couldn't start a session", "error");
+  send({ t: "daily" });
+  void track("ui_daily_start", {});
 }
 
 async function playBot(level: string, asTutorial = false) {
@@ -842,7 +867,12 @@ function endPanel() {
   const s = m.state;
   const youWon = m.you !== null && s.winner === m.you;
   const draw = s.winner === null;
-  const reason = { home: "home captured", turns: "most territory", forfeit: "resignation", abandon: "opponent left" }[s.endReason ?? "turns"] ?? "";
+  const loserIsYou = m.you !== null && s.winner !== null && s.winner !== m.you;
+  const reason = s.endReason === "abandon"
+    ? (loserIsYou ? "missing three turns in a row" : "the other player leaving")
+    : s.endReason === "forfeit"
+      ? (loserIsYou ? "resignation" : "the other player resigning")
+      : { home: "home captured", turns: "most territory" }[s.endReason ?? "turns"] ?? "";
   const title = m.you === null ? (draw ? "Draw" : `${m.seats[s.winner!].name} wins`) : draw ? "Draw" : youWon ? "Victory!" : "Defeat";
   const elo = m.eloChange !== null && m.you !== null ? (m.you === 0 ? m.eloChange : -m.eloChange) : null;
   return h("div", { class: `end ${youWon ? "won" : draw ? "draw" : "lost"}` },
@@ -852,11 +882,13 @@ function endPanel() {
     m.stake && m.you !== null ? h("p", {}, draw ? `Stakes refunded (${m.stake} coins).` : youWon ? `${m.stake * 2 - Math.floor((m.stake * 2 * me.rakePercent) / 100)} coins are on their way to your Serble balance.` : `You lost your ${m.stake}-coin stake.`) : null,
     h("div", { class: "row" },
       m.tutorial ? h("button", { class: "btn primary", onclick: () => playBot("easy") }, "Play the Easy bot") : null,
+      m.mode === "daily" ? h("button", { class: "btn primary", onclick: () => playDaily() }, "Try today's map again") : null,
       m.mode === "bot" && !m.tutorial ? h("button", { class: "btn primary", onclick: () => playBot(m.seats.find((x) => x.bot)?.bot ?? "normal") }, "Rematch") : null,
       m.mode === "ranked" ? h("button", { class: "btn primary", onclick: () => { navigate("/"); toggleQueue(); } }, "Play again") : null,
       h("a", { class: "btn", href: `/m/${m.id}?replay=1`, onclick: (e: Event) => { e.preventDefault(); match = null; navigate(`/m/${m.id}`); } }, "Replay"),
       h("a", { class: "btn", href: "/" }, "Home"),
     ),
+    m.mode === "daily" && m.you !== null ? h("p", {}, youWon ? `You beat today's map in ${m.lastResult?.turn ?? s.turn} turns. Fewer is better, so check the board on the home page.` : "The daily boss won this time. Same map until midnight UTC, so try a different plan!") : null,
     me.user?.guest && m.mode === "bot" && youWon ? h("p", { class: "muted small" }, "Nice! ", h("a", { href: "/auth/login?return=/", "data-external": "" }, "Sign in with Serble"), " to play ranked and stake coins.") : null,
   );
 }

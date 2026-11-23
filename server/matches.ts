@@ -8,7 +8,15 @@ import { randomId } from "./crypto";
 import { DB, now, tx } from "./db";
 import { log } from "./log";
 
-export type Mode = "bot" | "ranked" | "casual" | "staked";
+export type Mode = "bot" | "ranked" | "casual" | "staked" | "daily";
+
+/** The daily challenge map: same seed for everyone on a given UTC day. */
+export function dailySeed(date = new Date()): { day: string; seed: number } {
+  const day = date.toISOString().slice(0, 10);
+  let h = 2166136261;
+  for (const ch of `hexstake-daily-${day}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return { day, seed: h >>> 0 };
+}
 
 export interface Seat {
   id: string; // user id, guest:xxx or bot:<level>
@@ -236,8 +244,8 @@ export class MatchManager {
 
   constructor(private db: DB) {}
 
-  create(mode: Mode, seats: [Seat, Seat], stake = 0, opts: { id?: string; swap?: boolean; tutorial?: boolean } = {}): LiveMatch {
-    const seed = (Math.random() * 2 ** 31) >>> 0;
+  create(mode: Mode, seats: [Seat, Seat], stake = 0, opts: { id?: string; swap?: boolean; tutorial?: boolean; seed?: number } = {}): LiveMatch {
+    const seed = opts.seed ?? (Math.random() * 2 ** 31) >>> 0;
     const botSeed = (Math.random() * 2 ** 31) >>> 0;
     // Randomize who plays which side.
     if (opts.swap ?? Math.random() < 0.5) seats = [seats[1], seats[0]];

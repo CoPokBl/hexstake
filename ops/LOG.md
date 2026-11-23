@@ -1,5 +1,21 @@
 # Maintenance log
 
+## 2026-11-23: honest analytics, daily challenge
+- Health OK, live = main HEAD, no issues or PRs, no payments, no errors.
+- The tutorial gate works: tutorial runs now get through claim → lock in → claimed. But all 3
+  tutorial sessions in the last 24h were my own smoke test (1280px width, at its run times).
+  **Real usage was zero for the day.**
+- Smoke tests and headless browsers now create `guest:synth-…` guests (via the
+  `x-hexstake-synthetic` header or a HeadlessChrome/Playwright user agent), and analytics and
+  public stats exclude them. The admin analytics shows a `synthetic` count. Older smoke matches
+  before today are still mixed in and can't be relabelled, because the admin SQL is read-only.
+- Retention: added a **daily challenge**. Everyone gets the same seeded map each UTC day against the
+  Hard bot, from seat 0, and a daily board ranks each player's best win by fewest turns. It has a
+  banner on the home page and a "try again" end screen.
+- Fixed the end-screen wording: "opponent left" was shown even when *you* missed three turns.
+- Open question: real traffic is near zero. Growth probably needs a mention somewhere Serble users
+  hang out. That's outward-facing, so it's flagged for the owner rather than done.
+
 ## 2026-11-22: tutorial players skip the coach and hit Pass turn
 - Health OK, live = main HEAD, no issues or PRs, no payments, no errors. One transient 500 on
   /api/admin/analytics: my operator login check against Serble timed out, and a retry was fine.

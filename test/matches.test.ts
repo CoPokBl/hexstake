@@ -43,3 +43,13 @@ test("a locked-in submission wins over the draft", () => {
   assert.deepEqual(m.history[0][0], { [ts[1]]: 1 });
   m.stop();
 });
+
+test("daily seed is stable within a UTC day and changes the next day", async () => {
+  const { dailySeed } = await import("../server/matches");
+  const a = dailySeed(new Date("2026-11-23T00:05:00Z"));
+  const b = dailySeed(new Date("2026-11-23T23:55:00Z"));
+  const c = dailySeed(new Date("2026-11-24T00:05:00Z"));
+  assert.equal(a.seed, b.seed);
+  assert.equal(a.day, "2026-11-23");
+  assert.notEqual(a.seed, c.seed);
+});
