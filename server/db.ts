@@ -103,6 +103,18 @@ const MIGRATIONS: string[] = [
     v TEXT NOT NULL
   );
   `,
+  // v2: W-L-D and games count player-vs-player matches only; rebuild them from match history.
+  `
+  UPDATE users SET
+    games = (SELECT COUNT(*) FROM matches m WHERE m.status = 'finished' AND m.mode IN ('ranked','casual','staked')
+             AND (m.p0 = users.id OR m.p1 = users.id)),
+    wins = (SELECT COUNT(*) FROM matches m WHERE m.status = 'finished' AND m.mode IN ('ranked','casual','staked')
+            AND ((m.p0 = users.id AND m.winner = 0) OR (m.p1 = users.id AND m.winner = 1))),
+    losses = (SELECT COUNT(*) FROM matches m WHERE m.status = 'finished' AND m.mode IN ('ranked','casual','staked')
+              AND ((m.p0 = users.id AND m.winner = 1) OR (m.p1 = users.id AND m.winner = 0))),
+    draws = (SELECT COUNT(*) FROM matches m WHERE m.status = 'finished' AND m.mode IN ('ranked','casual','staked')
+             AND (m.p0 = users.id OR m.p1 = users.id) AND m.winner IS NULL);
+  `,
 ];
 
 export function openDb(path = join(config.dataDir, "hexstake.db")): DB {

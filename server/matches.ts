@@ -33,6 +33,9 @@ export interface Client {
   send(msg: object): void;
 }
 
+/** Modes that count towards a player's W-L-D record and games played. */
+export const PVP_MODES: Mode[] = ["ranked", "casual", "staked"];
+
 const MAX_MISSED = 3;
 const TUTORIAL_PASSIVE_TURNS = 3;
 const TUTORIAL_TURN_SECONDS = 90;
@@ -296,7 +299,8 @@ export class MatchManager {
           this.db.prepare("UPDATE users SET elo = elo - ? WHERE id = ?").run(d, b.id);
         }
       }
-      m.seats.forEach((seat, p) => {
+      // Win/loss records only count player-vs-player matches; bot and daily games don't.
+      if (PVP_MODES.includes(m.mode)) m.seats.forEach((seat, p) => {
         if (seat.bot || seat.id.startsWith("guest:")) return;
         const col = s.winner === null ? "draws" : s.winner === p ? "wins" : "losses";
         this.db.prepare(`UPDATE users SET games = games + 1, ${col} = ${col} + 1 WHERE id = ?`).run(seat.id);

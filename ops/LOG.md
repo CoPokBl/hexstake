@@ -1,5 +1,15 @@
 # Maintenance log
 
+## 2026-11-24: records count PvP only
+- Health OK, live = main HEAD, no issues or PRs, no payments, no errors. Analytics now excludes
+  synthetic traffic (3 smoke matches filtered out).
+- Daily challenge, day 1: 8 plays by 4 real players, no resignations, about 16 turns per game.
+  Top of the board: CoPokBl and Baylie at 13 turns. Retention works where the bots alone didn't.
+- Feedback: "bots counting against win/loss on the ranks page is weird… someone can just spam win
+  against easy bot". Fixed: only ranked, casual and staked matches update W-L-D and games. Schema
+  migration v2 rebuilds every player's record from PvP match history (checked on a v1-shaped DB:
+  12 games 10-2 became 2 games 1-1). The Ranks page now says what counts.
+
 ## 2026-11-23: honest analytics, daily challenge
 - Health OK, live = main HEAD, no issues or PRs, no payments, no errors.
 - The tutorial gate works: tutorial runs now get through claim → lock in → claimed. But all 3

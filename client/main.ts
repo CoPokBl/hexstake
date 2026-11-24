@@ -980,7 +980,7 @@ function renderReplay(main: HTMLElement, rec: any) {
 
 async function renderLeaderboard() {
   const table = h("table", { class: "table" }, h("tr", {}, h("th", {}, "#"), h("th", {}, "Player"), h("th", {}, "Rating"), h("th", {}, "W-L-D")));
-  shell(h("section", {}, h("h2", {}, "Leaderboard"), table));
+  shell(h("section", {}, h("h2", {}, "Leaderboard"), h("p", { class: "muted small" }, "Ratings and W-L-D count ranked, challenge and coin matches against other players. Bot games and the daily challenge don't count."), table));
   const rows = (await api("/api/leaderboard")) ?? [];
   if (!rows.length) table.after(h("p", { class: "muted" }, "Nobody is ranked yet. Play a ranked or challenge match to get on the board."));
   rows.forEach((u: any, i: number) => {
