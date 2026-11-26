@@ -9,6 +9,8 @@
 - Added `/api/live` (online, searching, live PvP matches, open lobbies; synthetic players
   excluded). The home page shows a live line such as "1 player is searching for a ranked match
   right now. Join the queue", refreshed every 10 seconds and hidden when nothing is happening.
+- 19:44 scheduled run: no change since the afternoon run (healthy, no issues, one anonymous
+  page view, no payments). Nothing shipped.
 - Growth is still the real constraint. It needs the owner to put Hexstake in front of Serble users
   (asked on 11-23, no answer yet).
 
