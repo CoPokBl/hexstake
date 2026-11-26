@@ -268,6 +268,17 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL, session:
     });
   }
   if (path === "/api/stats") return send(res, 200, publicStats(db));
+  if (path === "/api/live") {
+    // Lightweight presence for the home page, so players who arrive at the same time find each other.
+    const real = [...byUser.keys()].filter((id) => !id.startsWith("guest:synth-"));
+    const pvp = [...mm.live.values()].filter((m) => !m.state.over && m.mode !== "bot" && m.mode !== "daily");
+    return send(res, 200, {
+      online: real.length,
+      searching: rankedQueue.filter((q) => !q.client.userId.startsWith("guest:synth-")).length,
+      liveMatches: pvp.length,
+      openLobbies: economy.openPublic().length,
+    });
+  }
   if (path === "/api/daily") {
     const { day } = dailySeed();
     const start = Date.parse(`${day}T00:00:00Z`);

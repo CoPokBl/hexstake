@@ -288,6 +288,7 @@ function renderHome() {
       ),
       preview,
     ),
+    h("div", { class: "presence", id: "presence" }),
     h("section", { class: "daily", id: "daily" },
       h("div", { class: "daily-text" },
         h("h2", {}, "Daily challenge"),
@@ -359,6 +360,11 @@ function renderHome() {
         h("span", { class: "muted" }, ` · ${w ? `${w} won` : "draw"}${m.stake ? ` · ${m.stake}⬡` : ""} · ${timeAgo(m.ended_at)}`)));
     }
   });
+  void updatePresence();
+  const presenceTimer = window.setInterval(() => {
+    if (!document.getElementById("presence")) return clearInterval(presenceTimer);
+    void updatePresence();
+  }, 10_000);
   api("/api/daily").then((d) => {
     const el = document.getElementById("daily-board");
     if (!el || !d) return;
@@ -385,6 +391,29 @@ function card(title: string, text: string, actions: Node) {
 }
 function stat(n: number, label: string) {
   return h("div", { class: "stat" }, h("b", {}, String(n ?? 0)), h("span", {}, label));
+}
+
+/** "Who's around" line on the home page; the call to action changes with what's happening. */
+async function updatePresence() {
+  const el = document.getElementById("presence");
+  const live = await api("/api/live");
+  if (!el || !live) return;
+  clear(el);
+  const others = Math.max(0, live.online - (me.user ? 1 : 0));
+  if (live.searching > 0 && !queueing) {
+    el.append(h("span", { class: "dot online" }),
+      ` ${live.searching} player${live.searching === 1 ? " is" : "s are"} searching for a ranked match right now. `,
+      h("button", { class: "btn small primary", onclick: () => { void toggleQueue(); } }, "Join the queue"));
+  } else if (live.openLobbies > 0) {
+    el.append(h("span", { class: "dot online" }),
+      ` ${live.openLobbies} open challenge${live.openLobbies === 1 ? "" : "s"} waiting for an opponent. `,
+      h("a", { class: "btn small primary", href: "/lobby" }, "See lobbies"));
+  } else if (live.liveMatches > 0) {
+    el.append(h("span", { class: "dot online" }), ` ${live.liveMatches} match${live.liveMatches === 1 ? "" : "es"} being played now. `, h("a", { href: "/#recent" }, "Watch"));
+  } else if (others > 0) {
+    el.append(h("span", { class: "dot online" }), ` ${others} other player${others === 1 ? "" : "s"} online.`);
+  }
+  el.classList.toggle("empty", el.childNodes.length === 0);
 }
 
 async function playDaily() {

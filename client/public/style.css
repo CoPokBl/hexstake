@@ -113,6 +113,8 @@ button.link.danger { color: var(--danger); }
 .hero .lead { font-size: 1.1rem; color: var(--text-dim); max-width: 34rem; }
 .hero-board { width: 100%; aspect-ratio: 1.1; }
 .cta { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.presence { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; padding: .6rem .9rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); font-weight: 600; }
+.presence.empty, .presence:empty { display: none; }
 .daily { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; align-items: center; margin-bottom: 1.5rem; padding: 1.25rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--p-theirs); box-shadow: var(--shadow); }
 .daily h2 { margin-bottom: .35rem; }
 .daily p { color: var(--text-dim); }

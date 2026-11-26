@@ -1,5 +1,17 @@
 # Maintenance log
 
+## 2026-11-26: live presence on the home page
+- The 2026-11-25 run stopped after reading its trigger and did nothing. Re-run today on request.
+- Health OK, live = main HEAD, smoke tests green, no issues or PRs, no payments, no errors.
+- Usage: the daily challenge's first day (11-24) had 4 real players, but nobody came back on 11-25,
+  and nobody has played yet today. Ranked: 5 queue joins but only 2 matches made over two days, so
+  players queue alone and give up.
+- Added `/api/live` (online, searching, live PvP matches, open lobbies; synthetic players
+  excluded). The home page shows a live line such as "1 player is searching for a ranked match
+  right now. Join the queue", refreshed every 10 seconds and hidden when nothing is happening.
+- Growth is still the real constraint. It needs the owner to put Hexstake in front of Serble users
+  (asked on 11-23, no answer yet).
+
 ## 2026-11-24: records count PvP only
 - Health OK, live = main HEAD, no issues or PRs, no payments, no errors. Analytics now excludes
   synthetic traffic (3 smoke matches filtered out).
