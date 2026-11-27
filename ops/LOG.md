@@ -1,5 +1,12 @@
 # Maintenance log
 
+## 2026-11-27: quiet day, nothing shipped
+- Health OK. Live is `sha-ad20244`; HEAD is a log-only [skip ci] commit, so no redeploy is needed.
+  Smoke tests green, no issues or PRs, no errors, no payments.
+- Real usage: 0 matches, 3 anonymous page views. Daily challenge: 0 plays today.
+- Nothing shipped on purpose: with no players there's no signal to act on. The blocker is still
+  reach, which waits on the owner (asked on 11-23 about an announcement).
+
 ## 2026-11-26: live presence on the home page
 - The 2026-11-25 run stopped after reading its trigger and did nothing. Re-run today on request.
 - Health OK, live = main HEAD, smoke tests green, no issues or PRs, no payments, no errors.
